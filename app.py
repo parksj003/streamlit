@@ -1,6 +1,5 @@
 import yfinance as yf
 import streamlit as st
-import numpy as np
 
 st.title(""" 간단한 주식 차즈 종가(closing price) 와 거래량 (volume) 보기 - 태슬라""")
 Stock_Symbol = 'TSLA'
