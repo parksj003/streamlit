@@ -1,54 +1,51 @@
-# import yfinance as yf
-# import streamlit as st
-
-# st.title(""" 간단한 주식 차즈 종가(closing price) 와 거래량 (volume) 보기 - 태슬라""")
-# Stock_Symbol = 'TSLA'
-# StockData = yf.Ticker(Stock_Symbol)
-# StockChart = StockData.history(period = '1d', start='2019-7-2',end='2020-5-11')
-# st.line_chart(StockChart.Close)
-# st.line_chart(StockChart.Volume)
-
-import pandas as pd
-from sklearn import datasets
-from sklearn.ensemble import RandomForestClassifier
 import streamlit as st
+import matplotlib.pyplot as plt
+import pandas as pd
+# st.set_page_config(layout="wide")
+st.header("Calculate Field Curvature of TC lens system")
 
-iris = datasets.load_iris()
+file = st.file_uploader("File Select", ['txt'])
 
-st.write(""" # 붓꽃 (Iris Flower) 예측 웹 앱""")
-st.sidebar.header('입력값')
+tab1, tab2 = st.tabs(["Data manipulation", "Visualization"])
+with tab1:
+    if file is not None:
+        if file.name.split('.')[-1] == 'txt':
+            df = pd.read_csv('test.txt', delimiter='\t')
+            
+        st.dataframe(df)
 
-def user_input_features():
-    sepal_length = st.sidebar.slider('꽃받침 (Sepal) 길이',4.3, 7.9, 5.4)
-    sepal_width = st.sidebar.slider('꽃받침 (Sepal) 넓이',2.0, 4.4, 3.4)
-    petal_length = st.sidebar.slider('꽃잎 (Petal) length',1.0, 6.9, 1.3)
-    petal_width = st.sidebar.slider('꽃잎 (Petal) width',0.1, 2.5, 0.2)
-    
-    data = {'sepal_length': sepal_length, 'sepal_width':sepal_width,'petal_length':petal_length,'petal_width':petal_width}
-    features = pd.DataFrame(data, index=[0])
-    return features
 
-df = user_input_features()
+    select = st.selectbox(label = "Scanning mode", options=['Default Field Editor',
+                                        'MC Editor', 'None'], index = 2)
+    if (select is not 'None') and file is not None:
+        if select == 'Default Field Editor':
+            Hx_X_map = df.groupby('Hx')['X_sample'].mean()
+            Hy_Y_map = df.groupby('Hy')['Y_sample'].mean()
+            df['X'] = df['Hx'].map(Hx_X_map)
+            df['Y'] = df['Hy'].map(Hy_Y_map)
+        elif select == 'MC Editor':   
+            Hx_X_map = df.groupby('Hx')['Y_sample'].mean()
+            Hy_Y_map = df.groupby('Hy')['X_sample'].mean()
+            df['X'] = -df['Hx'].map(Hx_X_map)
+            df['Y'] = -df['Hy'].map(Hy_Y_map)
 
-st.subheader('사용자입력 파라미터')
-st.write(df)
-
-iris =  datasets.load_iris()
-X = iris.data
-Y = iris.target
-
-clf = RandomForestClassifier()
-clf.fit(X, Y)
-
-prediction = clf.predict(df)
-prediction_proba = clf.predict_proba(df)
-
-st.subheader('클래스 레이블 및 해당 색인 번호')
-st.write(iris.target_names)
-
-st.subheader('예측')
-st.write(iris.target_names[prediction])
-st.write(prediction)
-
-st.subheader('예측 확률')
-st.write(prediction_proba)
+        st.dataframe(df)
+if (select is not 'None') and file is not None:
+    with tab2:
+        data_list = df.columns[6:9]
+        title_list = ['Curvature Sagital', 'Curvature Tangential', 'Field Curvature']
+        ctitle_list = ['Sagital (mm)', 'Tangential (mm)', 'Best focus (mm)']
+        interp = st.selectbox(label = "Scanning mode", options=['none', 'nearest', 'bilinear', 'bicubic', 'spline16',
+           'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
+           'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos'], index = 0)
+        fig, axes = plt.subplots(3,1, figsize=(3,7.5))
+        for i in range(3):
+            pivot = df.pivot_table(values=data_list[i], index='X', columns='Y')
+            graph = axes[i].imshow(pivot, extent = [min(pivot.columns), max(pivot.columns), min(pivot.index), max(pivot.index)], cmap = 'jet', interpolation=interp)
+            axes[i].set_title(title_list[i])
+            axes[i].set_xlabel('Spot Position X (mm)')
+            axes[i].set_ylabel('Spot Position Y (mm)')
+                
+            fig.colorbar(graph, ax=axes[i],label=ctitle_list[i], shrink=1)
+        plt.tight_layout()
+        st.pyplot(fig)
